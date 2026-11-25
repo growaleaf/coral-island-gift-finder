@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coral Island Loved Gift Finder</title>
+<style>
+  :root {
+    --bg: #14151c;
+    --panel: #1f212b;
+    --border: #353846;
+    --text: #e7e8ee;
+    --muted: #9497a6;
+    --favorite: #3f7d4f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.4;
+  }
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin: 0 0 4px;
+  }
+  p.sub {
+    color: var(--muted);
+    margin: 0 0 24px;
+    font-size: 0.9rem;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  input[type="text"], select {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .results {
+    margin-top: 16px;
+  }
+  .result-group {
+    margin-bottom: 14px;
+  }
+  .result-group h3 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 6px;
+    color: #7fc490;
+  }
+  ul.char-list, ul.item-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  ul.char-list li, ul.item-list li {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    border: 1px solid var(--border);
+    background: rgba(63,125,79,0.25);
+    border-color: var(--favorite);
+  }
+  .empty {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .note {
+    color: var(--muted);
+    font-size: 0.78rem;
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+  }
+  footer {
+    color: var(--muted);
+    font-size: 0.78rem;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    margin-top: 32px;
+  }
+  footer p { margin: 0 0 6px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Coral Island Loved Gift Finder</h1>
+  <p class="sub">Type an item to see which villagers love it. Or pick a villager to see their full loved-gifts list.</p>
+
+  <div class="panel">
+    <label for="item-search">Search by item</label>
+    <input type="text" id="item-search" placeholder="e.g. Pink Diamond, Hummus, Blue Dye" autocomplete="off">
+    <div class="results" id="item-results"></div>
+  </div>
+
+  <div class="panel">
+    <label for="char-select">Browse by villager</label>
+    <select id="char-select">
+      <option value="">Choose a villager&hellip;</option>
+    </select>
+    <div class="results" id="char-results"></div>
+  </div>
+
+  <footer id="disclosure">
+    <p>Data source: commonsensegamer.com, "Coral Island Gift Guide: Best Gift for Each Character" (published 2022-10-21, last modified 2022-10-21). Fetched 2026-11-25.</p>
+    <p>A full read of the saved 927-line source file located a "Loved Gifts" heading for 53 villagers; every heading yielded a non-empty gift list, so none were skipped.</p>
+    <p>The source also states every character except Jim loves the Pink Diamond gift; this is disclosed as a page claim, shown when you search for it, and is not folded into each villager's own list unless that villager's list already names it directly.</p>
+    <p>Single source, loved gifts only; liked/disliked tiers are not included. Verify in-game.</p>
+  </footer>
+</main>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  var itemInput = document.getElementById("item-search");
+  var itemResults = document.getElementById("item-results");
+  var charSelect = document.getElementById("char-select");
+  var charResults = document.getElementById("char-results");
+
+  var names = VILLAGERS.map(function (c) { return c.name; }).sort();
+  names.forEach(function (name) {
+    var opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    charSelect.appendChild(opt);
+  });
+
+  function renderGroup(container, label, names) {
+    if (names.length === 0) return;
+    var group = document.createElement("div");
+    group.className = "result-group";
+    var h = document.createElement("h3");
+    h.textContent = label + " (" + names.length + ")";
+    group.appendChild(h);
+    var ul = document.createElement("ul");
+    ul.className = "char-list";
+    names.forEach(function (name) {
+      var li = document.createElement("li");
+      li.textContent = name;
+      ul.appendChild(li);
+    });
+    group.appendChild(ul);
+    container.appendChild(group);
+  }
+
+  function searchItem(query) {
+    itemResults.innerHTML = "";
+    var q = query.trim().toLowerCase();
+    if (q.length === 0) return;
+
+    var lovers = [];
+    VILLAGERS.forEach(function (c) {
+      if (c.loved.some(function (g) { return g.toLowerCase().indexOf(q) !== -1; })) lovers.push(c.name);
+    });
+
+    if ("pink diamond".indexOf(q) !== -1 || q.indexOf("pink diamond") !== -1) {
+      var note = document.createElement("p");
+      note.className = "note";
+      note.textContent = UNIVERSAL_LOVED_NOTE;
+      itemResults.appendChild(note);
+    }
+
+    if (lovers.length === 0) {
+      var p = document.createElement("p");
+      p.className = "empty";
+      p.textContent = "No match in the 53 villagers covered by this source.";
+      itemResults.appendChild(p);
+      return;
+    }
+
+    renderGroup(itemResults, "Loves it", lovers);
+  }
+
+  function showVillager(name) {
+    charResults.innerHTML = "";
+    if (!name) return;
+    var c = VILLAGERS.find(function (x) { return x.name === name; });
+    if (!c) return;
+    renderGroup(charResults, "Loved gifts", c.loved);
+  }
+
+  itemInput.addEventListener("input", function () { searchItem(itemInput.value); });
+  charSelect.addEventListener("change", function () { showVillager(charSelect.value); });
+})();
+</script>
+</body>
+</html>
